@@ -26,14 +26,14 @@ class BicycleRentalSystem:
                 if bicycle_id not in self.bicycle_ids.keys():
                     self.bicycle_ids[bicycle_id] = (duration, pickup_loc)
 
-                    return {'status': 'ok', 'message': f'Rented {bicycle_id} for {duration} hour(s)'}
+                    return {'status': 'ok', 'message': f'Rented bicycle with id: {bicycle_id} for {duration} hour(s)'}
             
                 return {'status': 'failure', 'message': f'The id: {bicycle_id} is already rented.\nPlease try some other bicycle :)'}
                 
         
             except:
                 return {'status': 'failure', 'message': f'Please provide the right duration number'}
-                
+
         return {'status': 'failure', 'message': f'Please fill in all the required fields'}
 
 
