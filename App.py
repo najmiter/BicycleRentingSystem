@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from BicycleRentalSystem import BicycleRentalSystem
-import threading
+import time
 
      
 def update_selected_location(location):
@@ -14,13 +14,13 @@ class MainApp(ctk.CTk):
         self.brs = BicycleRentalSystem()
         
         self.title("Bicycle Rental System")
-        self.geometry("1080x640")
+        self.geometry("880x640")
 
         self.main_app = ctk.CTkFrame(master=self)
         self.main_app.pack(pady=20, padx=60, fill="both", expand=True)
 
         # Renting a bike UI
-        self.label = ctk.CTkLabel(master=self.main_app, text="Bicycle Rental System", font=("System",24))
+        self.label = ctk.CTkLabel(master=self.main_app, text="Bicycle Rental System", font=("Arial",24))
         self.label.pack(pady=12, padx=10)
 
         self.bicycle_id_entry = ctk.CTkEntry(master=self.main_app, placeholder_text="Bicylce id")
@@ -48,25 +48,27 @@ class MainApp(ctk.CTk):
         self.rent_bike_button_ret = ctk.CTkButton(master=self.main_app, text="Return It", command=self.return_bicycle)
         self.rent_bike_button_ret.pack(pady=12, padx=10)
 
+        self.message = ctk.CTkLabel(master=self.main_app, text='', font=("Arial", 14))
+        self.message.pack(pady=12, padx=10)
+
+
     def rent_bicycle(self):
         was_added = self.brs.rent_bicycle(
                         self.bicycle_id_entry.get().strip(), 
                         self.duration_entry.get().strip(),
                         BicycleRentalSystem.SelectedLocation)
         
-        self.show_message(was_added['message'])
+        self.show_message(was_added['message'], was_added['status'])
         
     def return_bicycle(self):
         was_returend = self.brs.return_bicycle(
                             self.bicycle_id_entry_ret.get().strip(), 
                             self.duration_ret.get().strip())
         
-        self.show_message(was_returend['message'], 5.0)
+        self.show_message(was_returend['message'], was_returend['status'])
 
-    def show_message(self, msg, duration=2.0):
-        self.message = ctk.CTkLabel(master=self.main_app, text=msg, font=("System", 14))
+    def show_message(self, msg, status):
+        self.message.destroy()
+        self.message = ctk.CTkLabel(master=self.main_app, text=msg, font=("Arial", 14), text_color=f'{'#5de144'if status == 'ok' else '#e1445d'}')
         self.message.pack(pady=12, padx=10)
-        timer = threading.Timer(duration, lambda: self.message.destroy())
-        timer.start()
-
-   
+        
