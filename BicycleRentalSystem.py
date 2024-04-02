@@ -11,6 +11,7 @@ class BicycleRentalSystem:
         "Canary Wharf",
         "Notting Hill"
     ]
+    NUM_BIKES = 100
     SelectedLocation = None
     ExtraChargesPerHour = 5
 
@@ -21,14 +22,15 @@ class BicycleRentalSystem:
     def rent_bicycle(self, bicycle_id, duration, pickup_loc):
         if bicycle_id and duration and pickup_loc:
             try:
-                duration = int(duration)
+                duration = float(duration)
 
-                if bicycle_id not in self.bicycle_ids.keys():
+                if bicycle_id not in self.bicycle_ids.keys() and int(bicycle_id) < BicycleRentalSystem.NUM_BIKES:
                     self.bicycle_ids[bicycle_id] = (duration, pickup_loc)
 
                     return {'status': 'ok', 'message': f'Rented bicycle with id: {bicycle_id} for {duration} hour(s)'}
             
-                return {'status': 'failure', 'message': f'The id: {bicycle_id} is already rented.\nPlease try some other bicycle :)'}
+                return {'status': 'failure', 'message': 
+                        f'The id: {bicycle_id} is not available.\nPlease try some other bicycle :)'}
                 
         
             except:
@@ -39,7 +41,7 @@ class BicycleRentalSystem:
 
 
     def return_bicycle(self, id, duration):
-        duration = int(duration)
+        duration = float(duration)
         if id in self.bicycle_ids:
             said_duration = self.bicycle_ids[id][0]
             rent = duration

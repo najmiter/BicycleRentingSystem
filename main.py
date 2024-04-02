@@ -5,7 +5,5 @@ def main():
         app = MainApp()
         app.mainloop()
 
+
 main()
-
-
-# int('sgsoerfwe')
