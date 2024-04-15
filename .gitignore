@@ -3,3 +3,4 @@ bin
 include
 __pycache__
 *.cfg
+*.zip
