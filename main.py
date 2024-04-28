@@ -1,262 +1,344 @@
 import customtkinter as ctk
 
-class BicycleRentalSystem:
-    # Array (list) of locations where a bike can be picked from
-    Locations = [
-        "South Bank Riverside",
+# a structural class for storing a bike item
+class RentedBikeItem():
+    def __init__(self, 
+                 id: int, 
+                 hours: float = -1,
+                 location: str = '',
+                 is_rented: bool = False):
+        self.id = id
+        self.rented_for_hours = hours
+        self.pickup_location = location
+        self.is_rented = is_rented
+
+###############################################
+###############################################
+###############################################
+# A manager class to manage renting and the
+# returning of a bicycle
+class BicycleRentalManager():
+    # Total bikes available in our company
+    TOTAL_BIKES = 50
+    # If the customer returns the bike later than
+    # the said duration, they must pay a fine of £5 
+    FINE_PER_HOUR = 5
+    # These are the locations where we offer
+    # rented bikes pickups
+    AvailableLocations: list[str] = [
+        "Covent Garden",
+        "Camden Market",
+        "Westminster Bridge",
+        "Shoreditch",
+        "Green Park",
+        "Tower Bridge",
+        "Hyde Park",
         "Regent's Park",
-        "Greenwich Park",
-        "King's Cross Station",
-        "Covent Garden Market",
-        "Shoreditch High Street",
+        "South Bank",
+        "Notting Hill",
         "Borough Market",
         "Kensington Gardens",
+        "The Shard",
+        "St. James's Park",
+        "Brick Lane",
+        "The British Museum",
+        "Victoria Park",
         "Canary Wharf",
-        "Notting Hill"
+        "Richmond Park",
+        "Chinatown"
     ]
-    # Total number of bikes we have
-    NUM_BIKES = 100
-    # Currently selected location for renting the bike
-    SelectedLocation = None
-    # Extra charges if the bikes is returned after the said time
-    ExtraChargesPerHour = 5
 
-    def __init__(self):
-        # record of all the rented bikes so far
-        self.rented_bikes = {}
-        
+    # This list stores the data about all the available
+    # bikes in our company (i.e., their avialability)
+    rented_bikes_data: list[RentedBikeItem] = [RentedBikeItem(i) for i in range(TOTAL_BIKES)]
 
-    def rent_bicycle(self, bicycle_id, duration, pickup_loc):
-        # a simple check that all the inputs have been filled
-        if bicycle_id and duration and pickup_loc:
-            # converting to a `float` might end up in a failure
-            # because the value in `duration` was not a number
+    # a static method to rent a bike
+    @classmethod
+    def rent_bike(_, id: str, hours: str, location: str):
+        # all the inputs must be valid
+        if id and hours and location.lower() != 'pickup location':
             try:
-                duration = float(duration)
+                # try to convert these two inputs to numbers.
+                # if they're not, they'll throw exceptions
+                # that we can catch and handle them with
+                # appropriate error messages in the UI
+                id = int(id)
+                hours = float(hours)
 
-                # checking if the bike hasn't already been rented
-                # and the bike's `id` is a valid (less than total bikes, i.e., 100)
-                if bicycle_id not in self.rented_bikes.keys() and int(bicycle_id) < BicycleRentalSystem.NUM_BIKES:
-                    self.rented_bikes[bicycle_id] = (duration, pickup_loc)
+                # hours must be valid
+                if hours <= 0: 
+                    raise
 
-                    # success response with a message
-                    return {'status': 'ok', 'message': f'Rented bicycle with id: {bicycle_id} for {duration} hour(s)'}
-            
-                # failed to rent the bike response with a message
-                return {'status': 'failure', 'message': 
-                        f'The id: {bicycle_id} is not available.\nPlease try some other bicycle :)'}
-                
-        
+                if id >= BicycleRentalManager.TOTAL_BIKES:
+                    return {'status': 'failure', 'msg': f'⚠️ We only have bikes with ID less than {BicycleRentalManager.TOTAL_BIKES}'}
+
+                if BicycleRentalManager.rented_bikes_data[id].is_rented:
+                    return {'status': 'failure', 'msg': f'😊 This bike with id: {id} has already been rented.'}
+                    
+                # we set the requested bike's data to the given data accordingly
+                BicycleRentalManager.rented_bikes_data[id] = (RentedBikeItem(id, hours, location, True))
+                return {'status': 'success', 'msg': f'🥳 Bike with id: {id} has been rented for {hours} hour(s).'}
             except:
-                # failed to convert `duration` to a `float` response with a message
-                return {'status': 'failure', 'message': f'Please provide the right duration number'}
+                return {'status': 'failure', 'msg': f'😢 Invalid ID or hours were input. Please try numerical inputs.'}
+        else:
+            return {'status': 'failure', 'msg': f'😢 Please fill in the required fields before submitting.'}
 
-        # failure response because not all the fields were filled
-        return {'status': 'failure', 'message': f'Please fill in all the required fields'}
+    # a static method to return the rented bike
+    @classmethod
+    def return_bike(_, id: int, hours: str):
+        # validation of inputs (they can't be empty)
+        if id and hours:
+            try:
+                # trying to convert them into numbers
+                # so that we can check their correct types
+                # before saving into the 'database'
+                id = int(id)
+                hours = float(hours)
 
+                if id >= BicycleRentalManager.TOTAL_BIKES:
+                    return {'status': 'failure', 'msg': f'⚠️ We only have bikes with ID less than {BicycleRentalManager.TOTAL_BIKES}'}
 
+                bike = BicycleRentalManager.rented_bikes_data[id]
+                # check if the bike was even rented in the first place
+                if bike.is_rented:
+                    agreed_duration = bike.rented_for_hours
+                    rent = hours
+                    # we check if the rent should include the fine
+                    if rent > agreed_duration:
+                        fine = rent - agreed_duration
+                        rent = agreed_duration + (fine * BicycleRentalManager.FINE_PER_HOUR)
 
-    def return_bicycle(self, id, duration):
-        try:
-            # duration might not be a valid number
-            # hence it should be in this `try` block
-            duration = float(duration)
-            # check if the bike was rented or not
-            if id in self.rented_bikes:
-                # then check the said duration
-                said_duration = self.rented_bikes[id][0]
-                # rent should be the duration (for now)
-                rent = duration
-
-                if duration > said_duration:
-                    # but if the duration is greater than the said duration
-                    # that means the customer must pay the extra fine
-                    duration -= said_duration
-                    rent = (duration * BicycleRentalSystem.ExtraChargesPerHour) + said_duration
-
-                # now that the bike's been returned, we should remove it from
-                # the rented bikes database.
-                self.rented_bikes.pop(id)
-                return {'status': 'ok', 'message': f'Bicycle with id: {id} has been returned.\nPlease pay £{rent}.'}
-
-            return {'status': 'failure', 'message': f"Bicycle with id: {id} hasn't been rented yet."}
-        
-        except:
-            return {'status': 'failure', 'message': f"Duration: {duration} is not a number."}
+                    # we reset that bike back to available
+                    BicycleRentalManager.rented_bikes_data[id] = RentedBikeItem(id)
+                    return {'status': 'success', 'msg': f'🥳 Bike with id: {id} has been returned.\nPlease pay £{rent}!'}
                 
+                return {'status': 'failure', 'msg': f'😊 Bike with id: {id} has not been rented yet!'}
+            except:
+                return {'status': 'failure', 'msg': f'😢 Invalid ID or hours were input. Please try numerical inputs.'}
+        else:
+            return {'status': 'failure', 'msg': f'😢 Please fill in the required fields before submitting.'}
 
-
-################################################
-################################################
-################################################
-### Developed by Asad Ali ###
-
-# function to update the location where the customer
-# wants to pick up their rented bike from
-def update_selected_location(location):
-    BicycleRentalSystem.SelectedLocation = location
-
-
-# this class inherits from the CTk class
-# docs: https://customtkinter.tomschimansky.com/documentation/
-class MainApp(ctk.CTk):
+###############################################
+###############################################
+###############################################
+# A class to make the UI and interact with user
+# this class inherits from the `CTk` 
+# class of `customtkinter` library
+class App(ctk.CTk):
+    MainColor = '#2c9f39'
     def __init__(self):
         super().__init__()
+        # Window title
+        self.title("Bicycle Renting System")
+        self.geometry("700x450")
+        ctk.set_appearance_mode('dark')
+        ctk.set_default_color_theme("green")
 
-        # a data member for accessing the methods for
-        # renting and returning the bike
-        self.brs = BicycleRentalSystem()
+        # Main layout of the app
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+
+        # The sidebar (navbar) of the app
+        self.navigation_frame = ctk.CTkFrame(self, corner_radius=0)
+        self.navigation_frame.grid(row=0, column=0, sticky="nsew")
+        self.navigation_frame.grid_rowconfigure(4, weight=1)
+
+        # Logo label in the sidebar
+        self.navigation_frame_label = ctk.CTkLabel(self.navigation_frame, text="🚲 Bicycleeee",
+                                                             compound="left", font=ctk.CTkFont(size=15, weight="bold"))
+        self.navigation_frame_label.grid(row=0, column=0, padx=20, pady=20)
+
+
+        # Rent a bike tab navigation button
+        self.rent_bike_nav_btn = ctk.CTkButton(self.navigation_frame, corner_radius=0, height=40, border_spacing=10, text="🤝 Rent a Bike",
+                                               fg_color="transparent", text_color=("gray10", "gray90"), hover_color=App.MainColor,
+                                               anchor="w", command=self.toggle_rent_bike)
+        self.rent_bike_nav_btn.grid(row=1, column=0, sticky="ew")
+
+        # Return a bike tab navigation button
+        self.return_bike_nav_btn = ctk.CTkButton(self.navigation_frame, corner_radius=0, height=40, border_spacing=10, text="💸 Return Bike",
+                                                 fg_color="transparent", text_color=("gray10", "gray90"), hover_color=App.MainColor,
+                                                 anchor="w", command=self.toggle_return_bike)
+        self.return_bike_nav_btn.grid(row=2, column=0, sticky="ew")
+
+        # Show all the data of the bikes navigation button
+        self.show_all_data_nav_btn = ctk.CTkButton(self.navigation_frame, corner_radius=0, height=40, border_spacing=10, text="📋 Show All Data",
+                                                   fg_color="transparent", text_color=("gray10", "gray90"), hover_color=App.MainColor,
+                                                   anchor="w", command=self.toggle_show_all_data)
+        self.show_all_data_nav_btn.grid(row=3, column=0, sticky="ew")
+
+        ### Rent a bike page (where all the inputs and data submission occurrs)
+        self.home_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        self.home_frame.grid_columnconfigure(0, weight=1)
         
-        # to set the title and the dimensions of the window
-        self.title("Bicycle Rental System")
-        self.geometry("880x640")
+        # Setting the heading and a subheading of the page
+        self.set_title_of(self.home_frame, 'Bicycle Rental System', 'Rent a Bike')
 
-        # main frame of the app
-        self.main_app = ctk.CTkFrame(master=self)
-        self.main_app.pack(pady=20, padx=60, fill="both", expand=True)
+        ## BIKE ID LABEL x INPUT
+        self.bike_id_label = ctk.CTkLabel(self.home_frame, text="Bike ID:")
+        self.bike_id_label.grid(row=1, column=0, padx=20, pady=5)
+        self.bike_id_input = ctk.CTkEntry(self.bike_id_label, placeholder_text="Enter the bike ID", width=250)
+        self.bike_id_input.grid(row=0, column=1, padx=20, pady=5)
 
-        # creating and packing the name of the app on top
-        self.label = ctk.CTkLabel(
-            master=self.main_app, text="Bicycle Rental System", font=("Arial",24))
-        self.label.pack(pady=12, padx=10)
+        ## TIME LABEL x INPUT
+        self.bike_rental_duration = ctk.CTkLabel(self.home_frame, text="Time:   ")
+        self.bike_rental_duration.grid(row=2, column=0, padx=20, pady=5)
+        self.bike_rental_input = ctk.CTkEntry(self.bike_rental_duration, placeholder_text="How long do you want the bike for", width=250)
+        self.bike_rental_input.grid(row=0, column=1, padx=20, pady=5)
 
-        # we got two tabs: one for renting the bike, the other for retuning it
-        self.tabview = ctk.CTkTabview(master=self.main_app, width=500, height=400)
-        self.tabview.pack(padx=20, pady=20)
+        ## LOCATION LABEL x INPUT
+        self.bike_pickup_location_label = ctk.CTkLabel(self.home_frame, text="Pickup location:               ")
+        self.bike_pickup_location_label.grid(row=3, column=0, padx=20, pady=5)
+        self.bike_pickup_location_input = ctk.CTkOptionMenu(self.bike_pickup_location_label, 
+                                                            values=BicycleRentalManager.AvailableLocations, 
+                                                            variable=ctk.StringVar(value="Pickup location"),
+                                                            fg_color=App.MainColor)
+        self.bike_pickup_location_input.grid(row=0, column=1, padx=20, pady=5)
 
-        # this will set the names of those two tabs
-        self.tabview.add("RENT") 
-        self.tabview.add("RETURN")
-        # and by default we want to be in the `RENT` tab
-        self.tabview.set("RENT") 
+        ## RENT THE BIKE BUTTON
+        self.rent_bike_label = ctk.CTkButton(self.home_frame, corner_radius=10, border_spacing=8, text="RENT NOW",
+                                             text_color=("gray10", "gray90"), fg_color=App.MainColor, width=20,
+                                            anchor="w", command=self.rent_bike)
+        self.rent_bike_label.grid(row=4, column=0, padx=20, pady=10)
 
-        ## Renting a bike UI
-        # friendly message that extra hours will cost extra charges
-        self.info_label = ctk.CTkLabel(
-                            master=self.tabview.tab('RENT'), 
-                            text="You will be charged £1 per hour. £5 for each extra hour.", 
-                            bg_color='#2482c3',
-                            corner_radius=50,
-                            font=("Arial", 14))
-        self.info_label.pack(pady=12, padx=10)
+        ## RESPONSE MESSAGE LABEL
+        # This will display the response message when a bike is requested
+        # This could be a success or a failure
+        self.response_msg = ctk.CTkLabel(self.home_frame, text='', width=150, corner_radius=10, height=30)
+        self.response_msg.grid(row=5, column=0, padx=20, pady=5)
 
-        # another message showing how much bikes (out of 100 in this case)
-        # have been already rented
-        self.available_bikes_label = ctk.CTkLabel(
-                                        master=self.tabview.tab('RENT'), 
-                                        text=f"{len(self.brs.rented_bikes.keys())} rented out of {BicycleRentalSystem.NUM_BIKES}", 
-                                        font=("Arial", 14))
-        self.available_bikes_label.pack(pady=12, padx=10)
+        ### RETURN BIKE PAGE
+        self.return_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        self.return_frame.grid_columnconfigure(0, weight=1)
 
-        # input field for the bike id
-        self.bicycle_id_entry = ctk.CTkEntry(
-                                    master=self.tabview.tab('RENT'), 
-                                    placeholder_text=f"Bicylce id < {BicycleRentalSystem.NUM_BIKES}")
-        self.bicycle_id_entry.pack(pady=12, padx=10)
+        # Title of the page and its subtitle
+        self.set_title_of(self.return_frame, 'Bicycle Rental System', 'Return a Bike')
 
-        # input field for the duration of rental
-        self.duration_entry = ctk.CTkEntry(
-                                    master=self.tabview.tab('RENT'), 
-                                    placeholder_text="Duration (in hours)")
-        self.duration_entry.pack(pady=12, padx=10)
+        ## BIKE ID INPUT x LABEL
+        self.bike_id_label_ret = ctk.CTkLabel(self.return_frame, text="Bike ID:")
+        self.bike_id_label_ret.grid(row=1, column=0, padx=20, pady=5)
+        self.bike_id_input_ret = ctk.CTkEntry(self.bike_id_label_ret, placeholder_text="Enter the bike ID", width=250)
+        self.bike_id_input_ret.grid(row=0, column=1, padx=20, pady=5)
 
-        # a dropdown for all the locations where our service
-        # offers a bike pick up
-        self.location_menu = ctk.CTkOptionMenu(master=self.tabview.tab('RENT'), values=BicycleRentalSystem.Locations,
-                                                command=update_selected_location,
-                                                variable=ctk.StringVar(value="Pickup location"),
-                                                fg_color='gray')
-        self.location_menu.pack(pady=12, padx=10)
+        ## TIME INPUT x LABEL
+        self.bike_rental_duration_ret = ctk.CTkLabel(self.return_frame, text="Time:   ")
+        self.bike_rental_duration_ret.grid(row=2, column=0, padx=20, pady=5)
+        self.bike_rental_input_ret = ctk.CTkEntry(self.bike_rental_duration_ret, placeholder_text="How long do you want the bike for", width=250)
+        self.bike_rental_input_ret.grid(row=0, column=1, padx=20, pady=5)
 
-        # the submit button that will call the `rent_bicycle` of `BicycleRentalSystem`
-        self.rent_bike_button = ctk.CTkButton(
-                                    master=self.tabview.tab('RENT'), 
-                                    text="Rent It", 
-                                    command=self.rent_bicycle)
-        self.rent_bike_button.pack(pady=12, padx=10)
+        ## RENT THE BIKE BUTTON
+        # It will handle the returning of the bike
+        self.rent_bike_label_ret = ctk.CTkButton(self.return_frame, corner_radius=10, border_spacing=8, text="RETURN NOW",
+                                             text_color=("gray10", "gray90"), fg_color=App.MainColor, width=20,
+                                            anchor="w", command=self.return_bike)
+        self.rent_bike_label_ret.grid(row=3, column=0, padx=20, pady=10)
 
-        ## Returning the bike
-        # it's the same label showing how much have been rented already
-        self.returned_bikes_label = ctk.CTkLabel(master=self.tabview.tab('RETURN'), 
-                                       text=f"{len(self.brs.rented_bikes.keys())} rented out of {BicycleRentalSystem.NUM_BIKES}", 
-                                       font=("Arial", 14))
-        self.returned_bikes_label.pack(pady=12, padx=10)
+        ## RESPONSE MESSAGE LABEL
+        # This is the message label to display the response of
+        # the returning of a rented bike
+        self.response_msg_ret = ctk.CTkLabel(self.return_frame, text='', width=150, corner_radius=10, height=40)
+        self.response_msg_ret.grid(row=4, column=0, padx=20, pady=10)
+
+        ### SHOW_ALL_DATA PAGE
+        self.show_all_data = ctk.CTkScrollableFrame(self, corner_radius=0, fg_color='transparent')
+        self.show_all_data.grid_columnconfigure(0, weight=1)
+
+        # Default page to show when the application is launched (i.e., 'Rent a Bike' Page)
+        self.select_frame_by_name("rent_bike_nav")
+
+    # This method handles the navigation buttons clicks
+    # and displays the corresponding page
+    def select_frame_by_name(self, name):
+        # Setting the active page and its button's background color in the sidebar
+        self.rent_bike_nav_btn.configure(fg_color=App.MainColor if name == "rent_bike_nav" else "transparent")
+        self.return_bike_nav_btn.configure(fg_color=App.MainColor if name == "return_bike_nav" else "transparent")
+        self.show_all_data_nav_btn.configure(fg_color=App.MainColor if name == "show_all_data_nav" else "transparent")
+        # Whichever page is selected will be displayed in the
+        # second column of the app and others will be cleared (if any)
+        if name == "rent_bike_nav":
+            self.home_frame.grid(row=0, column=1, sticky="nsew")
+        else:
+            self.home_frame.grid_forget()
+        if name == "return_bike_nav":
+            self.return_frame.grid(row=0, column=1, sticky="nsew")
+        else:
+            self.return_frame.grid_forget()
+        if name == 'show_all_data_nav':
+            # Create/recreate a label to show all the data about bikes
+            self.show_all_data = ctk.CTkScrollableFrame(self, corner_radius=0, fg_color='transparent')
+            self.show_all_data.grid(row=0, column=1, sticky="nsew")
+            # A label on the top to show the number of total bikes
+            # and the avialable bikes
+            l = ctk.CTkLabel(self.show_all_data, 
+                            text=f'{sum(1 for bike in BicycleRentalManager.rented_bikes_data if not bike.is_rented)} out of {BicycleRentalManager.TOTAL_BIKES} bikes are available', 
+                            width=150, corner_radius=10, height=30)
+            
+            l.grid(row=0, column=1, padx=20, pady=5)
+            # Then we show the status of all the bikes and
+            # whether or not they've been rented (color coded)
+            for i, bikes in enumerate(BicycleRentalManager.rented_bikes_data):
+                l = ctk.CTkLabel(self.show_all_data, 
+                            text=f'Bike #{i}: ', height=30)
+                l.grid(row=i+1, column=1, padx=20, pady=5)
+                l2 = ctk.CTkLabel(l, 
+                            text='RENTED' if bikes.is_rented else 'AVAILABLE', 
+                            fg_color='#b21515' if bikes.is_rented else '#009f22',
+                            width=150, corner_radius=10, height=30)
+                l2.grid(row=0, column=1, padx=20, pady=5)
+        else:
+            self.show_all_data.grid_forget()
+            self.show_all_data.destroy()
+
+    # Handlers of the navigation buttons
+    # They basically decide which page to
+    # show on the right side of the app
+    def toggle_rent_bike(self):
+        self.select_frame_by_name("rent_bike_nav")
+
+    def toggle_return_bike(self):
+        self.select_frame_by_name("return_bike_nav")
+
+    def toggle_show_all_data(self):
+        self.select_frame_by_name("show_all_data_nav")
+
+    # A helper method to reduce/eliminate code repitition
+    def set_title_of(self, frame, title, subtitle):
+        self.title = ctk.CTkLabel(frame, text=title, font=('Arial', 24))
+        self.title.grid(row=0, column=0, padx=20, pady=15)
+        self.subtitle = ctk.CTkLabel(self.title, text=f'- {subtitle} -', font=('Arial', 16))
+        self.subtitle.grid(row=1, column=0, padx=20, pady=5)
+
+    # A wrapper method to get the latest values
+    # of input fields and clean any leading spaces
+    def rent_bike(self):
+        response = BicycleRentalManager.rent_bike(
+                        self.bike_id_input.get().strip(),
+                        self.bike_rental_input.get().strip(),
+                        self.bike_pickup_location_input.get().strip()
+                    )
+
+        # This will show the respnose message (color coded)
+        self.response_msg.configure(True, 
+                                    text=response['msg'],
+                                    fg_color='#009f22' if response['status'] == 'success' else '#b21515')
         
-        # input for the id of the bike to be returned
-        self.bicycle_id_entry_ret = ctk.CTkEntry(
-                                        master=self.tabview.tab('RETURN'), 
-                                        placeholder_text="Bicylce id to return")
-        self.bicycle_id_entry_ret.pack(pady=12, padx=10)
-
-        # how long was the bike held by the customer (duration)
-        self.duration_ret = ctk.CTkEntry(
-                                        master=self.tabview.tab('RETURN'), 
-                                        placeholder_text="How long have you had it?")
-        self.duration_ret.pack(pady=12, padx=10)
-
-        # the submit button that will call `return_bicycle` of the `BicycleRentalSystem`
-        self.rent_bike_button_ret = ctk.CTkButton(
-                                        master=self.tabview.tab('RETURN'), 
-                                        text="Return It", 
-                                        command=self.return_bicycle)
-        self.rent_bike_button_ret.pack(pady=12, padx=10)
-
-        # this is a message label that appears below both tabs
-        # showing the responses of the user inputs (failures and successes)
-        self.message = ctk.CTkLabel(master=self.main_app, text='', font=("Arial", 14))
-        self.message.pack(pady=12, padx=12)
-
-
-    # our own wrapper method that just calls the `rent_bicycle`
-    # of the `BicycleRentalSystem` after cleaning the inputs
-    # and then updates the message with the response
-    def rent_bicycle(self):
-        was_added = self.brs.rent_bicycle(
-                        self.bicycle_id_entry.get().strip(), 
-                        self.duration_entry.get().strip(),
-                        BicycleRentalSystem.SelectedLocation)
+    # A wrapper method to get the input values
+    # and strip any leading spaces before sending
+    # them to the `return_bike` of `BicycleRentalManager`
+    def return_bike(self):
+        response = BicycleRentalManager.return_bike(
+                        self.bike_id_input_ret.get().strip(),
+                        self.bike_rental_input_ret.get().strip()
+                    )
         
-        self.show_message(was_added['message'], was_added['status'])
-
+        # This will show the respnose message (color coded)
+        self.response_msg_ret.configure(True, 
+                                    text=response['msg'],
+                                    fg_color='#009f22' if response['status'] == 'success' else '#b21515')
     
-    # our own wrapper method that just calls the `return_bicycle`
-    # of the `BicycleRentalSystem` after cleaning the inputs
-    # and then updates the message with the response
-    def return_bicycle(self):
-        was_returend = self.brs.return_bicycle(
-                            self.bicycle_id_entry_ret.get().strip(), 
-                            self.duration_ret.get().strip())
-        
-        self.show_message(was_returend['message'], was_returend['status'])
 
 
-    # this is where we update the message and give it a color
-    # green if the action was a success, red otherwise
-    def show_message(self, msg, status):
-        self.message.configure(
-            require_redraw=True, 
-            text=msg, 
-            text_color=f'{'#5de144'if status == 'ok' else '#e1445d'}')
-
-        self.returned_bikes_label.configure(
-            require_redraw=True, 
-            text=f"{len(self.brs.rented_bikes.keys())} rented out of {BicycleRentalSystem.NUM_BIKES}")
-
-        self.available_bikes_label.configure(
-            require_redraw=True, 
-            text=f"{len(self.brs.rented_bikes.keys())} rented out of {BicycleRentalSystem.NUM_BIKES}")
-
-
-################################################
-################################################
-################################################
-
-################# Main Program #################
-
-def main():
-    if __name__ == '__main__':
-        app = MainApp()
-        app.mainloop()
-
-
-main()
+# Create and run the mainloop of the app
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
