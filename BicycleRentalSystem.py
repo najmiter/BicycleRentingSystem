@@ -1,5 +1,3 @@
-### Developed by Noman Aslam ###
-
 class BicycleRentalSystem:
     # Array (list) of locations where a bike can be picked from
     Locations = [

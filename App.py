@@ -1,5 +1,3 @@
-### Developed by Asad Ali ###
-
 import customtkinter as ctk
 from BicycleRentalSystem import BicycleRentalSystem
 
